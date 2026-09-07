@@ -1,4 +1,4 @@
-# 🚀 Python GML ML Pipeline
+# 🚀 Python GLM ML Pipeline
 
 [![HowTo Data Science: Logistic Regression model churn probability](https://i1.ytimg.com/vi/JbmfmgPlpXc/sddefault.jpg)](https://www.youtube.com/watch?v=JbmfmgPlpXc)
 
@@ -43,7 +43,7 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -
 
 ## 🔑 Environment Setup
 
-**Set your OpenAI API key:**
+**Optionally enable external AI summaries:**
 
 ```bash
 export OPENAI_API_KEY="your_actual_openai_api_key"
@@ -126,7 +126,10 @@ Made with ❤️ by **[Pierre-Henry Soria](https://pierrehenry.be)**. A super pa
 ## 📌 Notes
 
 - `logistic_model.pkl` and `scaler.pkl` are **placeholders**. Train and export your own models using `joblib.dump`.
-- This project is a **modern, production-ready ML pipeline**, showcasing deployment and explainability best practices for 2025 and beyond.
+- This is an educational API prototype. The bundled three-feature artifacts were saved with scikit-learn 1.1.3 and do not match the six-field request or the pinned runtime. They are deliberately rejected; `/health` and `/predict` return HTTP 503 until compatible artifacts are supplied.
+- Export trusted artifacts with the pinned scikit-learn version. The scaler/preprocessor must record the six request fields in their declared order and handle the categorical values; the classifier must use classes `[0, 1]`. Training data, evaluation and a matching preprocessing pipeline are not included.
+- Generated summaries do not establish why a model made a prediction. With no `OPENAI_API_KEY`, no explanation request is sent; provider errors return a generic message.
+- Run `python -m unittest discover -s tests` for offline API tests. Success-path doubles verify routing, not predictive quality. Production deployment still needs dependency review, real model validation and access controls.
 
 
 ### 🧠 Final Wise Principle
