@@ -5,18 +5,11 @@ from pydantic import BaseModel, ConfigDict
 from typing import Dict, Any
 import openai
 import os
+from pathlib import Path
+import warnings
+from sklearn.exceptions import InconsistentVersionWarning
 
 app = FastAPI(title="ML Churn Prediction API", version="1.0.0")
-
-# Load model and scaler
-try:
-    model = joblib.load('logistic_model.pkl')
-    scaler = joblib.load('scaler.pkl')
-except FileNotFoundError as e:
-    print(f"Model file not found: {e}")
-    print("Please ensure logistic_model.pkl and scaler.pkl exist in the project directory")
-    model = None
-    scaler = None
 
 # Set OpenAI API key
 openai.api_key = os.environ.get("OPENAI_API_KEY", "YOUR_API_KEY")
@@ -48,6 +41,28 @@ class CustomerData(BaseModel):
         }
     )
 
+def load_artifacts():
+    """Load only trusted local artifacts matching the declared request schema."""
+    root = Path(__file__).resolve().parent
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", InconsistentVersionWarning)
+            loaded_model = joblib.load(root / "logistic_model.pkl")
+            loaded_scaler = joblib.load(root / "scaler.pkl")
+        expected = list(CustomerData.model_fields)
+        if list(getattr(loaded_scaler, "feature_names_in_", [])) != expected:
+            return None, None
+        if list(getattr(loaded_model, "classes_", [])) != [0, 1]:
+            return None, None
+        return loaded_model, loaded_scaler
+    except Exception:
+        # Invalid, missing or incompatible artifacts must not make readiness green.
+        return None, None
+
+
+model, scaler = load_artifacts()
+
+
 # Response model
 
 
@@ -63,7 +78,7 @@ def predict(data: CustomerData):
     if model is None or scaler is None:
         raise HTTPException(
             status_code=503,
-            detail="Model not available. Please ensure model files exist."
+            detail="Compatible model artifacts are not available."
         )
 
     try:
@@ -81,14 +96,16 @@ def predict(data: CustomerData):
             explanation=summary,
             input_data=input_dict
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
-            status_code=400, detail=f"Prediction error: {str(e)}")
+            status_code=503, detail="Prediction is currently unavailable.") from None
 
 
 @app.get('/health')
 def health_check():
     """Health check endpoint"""
+    if model is None or scaler is None:
+        raise HTTPException(status_code=503, detail="Compatible model artifacts are not available.")
     return {
         "status": "healthy",
         "model_loaded": model is not None,
