@@ -12,7 +12,7 @@ from sklearn.exceptions import InconsistentVersionWarning
 app = FastAPI(title="ML Churn Prediction API", version="1.0.0")
 
 # Set OpenAI API key
-openai.api_key = os.environ.get("OPENAI_API_KEY", "YOUR_API_KEY")
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # Define input data model
 
@@ -115,6 +115,8 @@ def health_check():
 
 
 def summarise_prediction(probability, input_data):
+    if not os.environ.get("OPENAI_API_KEY"):
+        return "AI explanation is not configured."
     try:
         prompt = f"""
 You are an AI assistant. The model predicted a churn probability of {probability:.2f} for this customer with the following features:
@@ -130,5 +132,5 @@ Write a short, clear summary explaining this result to a business stakeholder in
         )
 
         return response.choices[0].message.content
-    except Exception as e:
-        return f"Explanation unavailable: {str(e)}"
+    except Exception:
+        return "AI explanation is currently unavailable."

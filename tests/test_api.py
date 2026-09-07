@@ -39,6 +39,19 @@ class ApiTest(unittest.TestCase):
                 self.assertEqual(result.status_code, 503)
                 self.assertNotIn('private-provider', result.text)
 
+    def test_unconfigured_explanation_makes_no_provider_call(self):
+        provider = MagicMock()
+        with patch.dict(app.os.environ, {}, clear=True), patch.object(app, 'openai', provider):
+            self.assertEqual(app.summarise_prediction(0.25, SAMPLE), 'AI explanation is not configured.')
+            provider.chat.completions.create.assert_not_called()
+
+    def test_explanation_failure_is_redacted(self):
+        provider = MagicMock()
+        provider.chat.completions.create.side_effect = RuntimeError('private-provider-detail')
+        with patch.dict(app.os.environ, {'OPENAI_API_KEY': 'test-only-placeholder'}), patch.object(app, 'openai', provider):
+            result = app.summarise_prediction(0.25, SAMPLE)
+            self.assertEqual(result, 'AI explanation is currently unavailable.')
+
     def test_valid_prediction_flow_with_offline_doubles(self):
         import numpy as np
         model, scaler = MagicMock(), MagicMock()
